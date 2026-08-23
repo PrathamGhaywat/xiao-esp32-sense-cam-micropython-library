@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+.mpremote/
+out/
+build-*/
+*.bin
+.DS_Store

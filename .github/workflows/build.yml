@@ -1,0 +1,94 @@
+name: Build XIAO Sense firmware
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.2.3
+    steps:
+      - name: Install deps in container
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y git python3-pip rsync
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          path: cam-api-mcpy
+      - name: Clone micropython
+        shell: bash
+        run: |
+          git clone --depth 1 --branch v1.24.1 --recursive https://github.com/micropython/micropython micropython || git clone --depth 1 --recursive https://github.com/micropython/micropython micropython
+          ls micropython/ports/esp32
+      - name: Clone micropython-camera-API (user C module)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/cnadler86/micropython-camera-API mp_camera_api
+          ls mp_camera_api/src
+      - name: Add esp32-camera dependency to IDF component manifest
+        shell: bash
+        run: |
+          set -e
+          MANIFEST="micropython/ports/esp32/main/idf_component.yml"
+          echo "Before:"; cat "$MANIFEST" || true
+          if ! grep -q "esp32-camera" "$MANIFEST"; then
+            # Append after existing dependencies
+            echo '  espressif/esp32-camera: "2.1.7"' >> "$MANIFEST"
+          fi
+          echo "After:"; cat "$MANIFEST"
+      - name: Build firmware (octal PSRAM, XIAO model)
+        shell: bash
+        run: |
+          set -e
+          . $IDF_PATH/export.sh
+          # Use the upstream build.sh which handles BOARD_VARIANT + camera pins
+          cd mp_camera_api
+          # Build for XIAO ESP32S3 Sense — octal PSRAM, camera model baked in
+          # The build script: ./build.sh -m <mpy-path> -b <board> -v <variant>
+          # We want ESP32_GENERIC_S3 with SPIRAM_OCT + MICROPY_CAMERA_MODEL_XIAO_ESP32S3
+          chmod +x build.sh
+          # Patch mpconfigboard to force octal if the board variant doesn't
+          # The generic S3 + SPIRAM_OCT variant sets CONFIG_SPIRAM_MODE_OCT
+          ./build.sh -m ../micropython -b ESP32_GENERIC_S3 -v SPIRAM_OCT --camera-model XIAO_ESP32S3 || \
+          ./build.sh -m ../micropython -b ESP32_GENERIC_S3 --camera-model XIAO_ESP32S3 || \
+          ( echo "build.sh flags changed upstream — trying direct idf.py build"; \
+            cd ../micropython/ports/esp32 && \
+            idf.py --version && \
+            make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=../../../mp_camera_api/micropython.cmake all )
+      - name: Collect artifact
+        shell: bash
+        run: |
+          set -e
+          find micropython -name "*.bin" -o -name "firmware.bin" | head -n 20 | xargs ls -lh || true
+          # Normalize location
+          BIN=$(find micropython/ports/esp32 -name "firmware.bin" | head -n1)
+          if [ -z "$BIN" ]; then BIN=$(find micropython -name "firmware.bin" | head -n1); fi
+          if [ -z "$BIN" ]; then BIN=$(find . -name "*.bin" | grep -i xiao | head -n1); fi
+          echo "BIN=$BIN" | tee -a $GITHUB_ENV
+          if [ -n "$BIN" ]; then
+            mkdir -p out
+            cp "$BIN" out/XIAO_ESP32S3_SENSE-camera-$(date +%Y%m%d).bin
+            ls -lh out/
+          else
+            echo "No firmware.bin found — listing build dirs"
+            find micropython/ports/esp32/build* -type f | head -n 40 || true
+            exit 1
+          fi
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiao-s3-sense-firmware
+          path: out/*.bin
+          if-no-files-found: warn
+      - name: Create Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.bin
+          generate_release_notes: true
