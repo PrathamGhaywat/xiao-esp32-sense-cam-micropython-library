@@ -35,12 +35,35 @@ jobs:
         run: |
           set -e
           MANIFEST="micropython/ports/esp32/main/idf_component.yml"
-          echo "Before:"; cat "$MANIFEST" || true
-          if ! grep -q "esp32-camera" "$MANIFEST"; then
-            # Append after existing dependencies
-            echo '  espressif/esp32-camera: "2.1.7"' >> "$MANIFEST"
+
+          if [ ! -f "$MANIFEST" ]; then
+            echo "Manifest not found at $MANIFEST"
+            echo "Skipping manifest patch; build must use another dependency mechanism."
+            exit 0
           fi
-          echo "After:"; cat "$MANIFEST"
+
+          echo "Before:"
+          cat "$MANIFEST"
+
+          if ! grep -q "esp32-camera" "$MANIFEST"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path("micropython/ports/esp32/main/idf_component.yml")
+          text = p.read_text()
+          if "dependencies:" in text:
+              text = text.replace(
+                  "dependencies:\n",
+                  "dependencies:\n  espressif/esp32-camera: \"2.1.7\"\n",
+                  1,
+              )
+          else:
+              text += "\ndependencies:\n  espressif/esp32-camera: \"2.1.7\"\n"
+          p.write_text(text)
+          PY
+          fi
+
+          echo "After:"
+          cat "$MANIFEST"
       - name: Build firmware (octal PSRAM, XIAO model)
         shell: bash
         run: |
