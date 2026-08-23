@@ -82,7 +82,7 @@ jobs:
           ( echo "build.sh flags changed upstream — trying direct idf.py build"; \
             cd ../micropython/ports/esp32 && \
             idf.py --version && \
-            make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=../../../mp_camera_api/micropython.cmake all )
+            make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=$(pwd)/../../../mp_camera_api/micropython.cmake all )
       - name: Collect artifact
         shell: bash
         run: |
