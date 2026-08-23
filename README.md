@@ -29,10 +29,7 @@ esptool --chip esp32s3 --port COM3 --baud 460800 write-flash -z 0x0 XIAO_ESP32S3
 
 ```bash
 # with mpremote (recommended)
-mpremote mip install github:PrathamGhaywat/cam-api-mcpy
-
-# or manually copy lib/xiao_sense/ to the board as /lib/xiao_sense/
-mpremote cp -r lib/xiao_sense :lib/xiao_sense
+mpremote mip install github:PrathamGhaywat/xiao-esp32-sense-cam-micropython-library
 ```
 
 ### 3) Hello camera
