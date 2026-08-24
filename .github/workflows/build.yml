@@ -77,8 +77,8 @@ jobs:
           chmod +x build.sh
           # Patch mpconfigboard to force octal if the board variant doesn't
           # The generic S3 + SPIRAM_OCT variant sets CONFIG_SPIRAM_MODE_OCT
-          ./build.sh ../micropython -b ESP32_GENERIC_S3 -v SPIRAM_OCT -c XIAO_ESP32S3 || \
-          ./build.sh ../micropython -b ESP32_GENERIC_S3 -c XIAO_ESP32S3 || \
+          ./build.sh ../micropython -i "$IDF_PATH" -b ESP32_GENERIC_S3 -v SPIRAM_OCT -c XIAO_ESP32S3 || \
+          ./build.sh ../micropython -i "$IDF_PATH" -b ESP32_GENERIC_S3 -c XIAO_ESP32S3 || \
           ( echo "build.sh flags changed upstream — trying direct idf.py build"; \
             cd ../micropython/ports/esp32 && \
             idf.py --version && \
