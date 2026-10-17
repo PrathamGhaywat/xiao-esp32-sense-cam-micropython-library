@@ -146,9 +146,6 @@ cam-api-mcpy/
 ```
 
 ## Firmware Build (CI, no local toolchain)
-
-You requested **prebuilt/CI only** (no local Docker).
-
 - Prebuilt: download from [micropython-camera-API releases](https://github.com/cnadler86/micropython-camera-API/releases) — pick `XIAO_ESP32S3` or `ESP32_GENERIC_S3-SPIRAM_OCT` variant.
 - CI build: push a tag `v*` and `.github/workflows/build.yml` builds a fresh `XIAO_ESP32S3 Sense` firmware with `CONFIG_SPIRAM_MODE_OCT` and uploads the `.bin` as an artifact/release. See `firmware/README.md`.
 
